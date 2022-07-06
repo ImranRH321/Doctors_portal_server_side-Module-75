@@ -22,6 +22,7 @@ async function run() {
     await client.connect();
     const serviceCollection = client.db("doctor_portal").collection("service");
     const bookingCollection = client.db("doctor_portal").collection("booking");
+    const userCollection = client.db("doctor_portal").collection("users");
 
     app.get("/service", async (req, res) => {
       const query = {};
@@ -69,6 +70,19 @@ async function run() {
      * app.patch('/booking/:id) //
      * app.delete('/booking/:id) //
      */
+
+    app.put('/user:email', async (req , res ) => {
+       const email = req.params.email;
+       const user = req.body;
+       const filter = {email: email} 
+       const options = {upsert: true};
+      const updateDoc = {
+        $set: user, 
+      }
+      const result = await userCollection.updateOne(filter, updateDoc, options)
+      res.send(result)
+      })
+
 
     app.get("/booking", async (req, res) => {
       const patient = req.query.patient;
