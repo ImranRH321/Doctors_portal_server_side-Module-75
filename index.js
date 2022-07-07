@@ -1,6 +1,6 @@
 const express = require("express");
 const cors = require("cors");
-const jwt = require('jsonwebtoken');
+const jwt = require("jsonwebtoken");
 require("dotenv").config();
 const { MongoClient, ServerApiVersion } = require("mongodb");
 const { json } = require("express");
@@ -18,23 +18,20 @@ const client = new MongoClient(uri, {
   serverApi: ServerApiVersion.v1,
 });
 
-
 const verifyJWT = (req, res, next) => {
   const authHeader = req.headers.authorization;
-   if(!authHeader){
-     return res.status(401).send({messages: 'UnAuthorization access'}) 
-   }
-   const token = authHeader.split(' ')[1]
-   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function(err, decoded) {
-     if(err){
-      res.status(403).send({messages: 'Forbidden access'}) 
-     }
-     req.decoded = decoded
-     next()
+  if (!authHeader) {
+    return res.status(401).send({ messages: "UnAuthorization access" });
+  }
+  const token = authHeader.split(" ")[1];
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function (err, decoded) {
+    if (err) {
+     return res.status(403).send({ messages: "Forbidden access" });
+    }
+    req.decoded = decoded;
+    next();
   });
-   
-   
-}
+};
 
 async function run() {
   try {
@@ -43,31 +40,40 @@ async function run() {
     const bookingCollection = client.db("doctor_portal").collection("booking");
     const userCollection = client.db("doctor_portal").collection("users");
 
+     //   _________Services_Collection_________
     app.get("/service", async (req, res) => {
-      const query = {};
-      const cursor = serviceCollection.find(query);
-      const services = await cursor.toArray();
+      const services = await serviceCollection.find().toArray();
       res.send(services);
     });
-
-  
     
+
+    //   _________User_Collection_________
+
+    app.get("/user", async (req, res) => {
+      const users = await userCollection.find({}).toArray();
+      console.log('users', users);
+      res.send(users);
+    });
+
+
+
     app.put("/user/:email", async (req, res) => {
       const email = req.params.email;
       const user = req.body;
       const filter = { email: email };
-      console.log('filter', filter);
       const options = { upsert: true };
       const updateDoc = {
         $set: user,
       };
       const result = await userCollection.updateOne(filter, updateDoc, options);
-      const token = jwt.sign({email: email }, process.env.ACCESS_TOKEN_SECRET,  {expiresIn: '2d'});
-      console.log('token pass', token);
-      res.send({result, token});
+      const token = jwt.sign(
+        { email: email },
+        process.env.ACCESS_TOKEN_SECRET,
+        { expiresIn: "10h" }
+      );
+      console.log("token pass", token);
+      res.send({ result, token });
     });
-
-
 
     // Warning: This is not the proper way to query multiple collection.
     // After learning more about mongodb. use aggregate, lookup, pipeline, match, group
@@ -109,20 +115,17 @@ async function run() {
      * app.delete('/booking/:id) //
      */
 
-    app.get("/booking", verifyJWT,  async (req, res) => {
-      console.log(req.decoded, 'decoded');
-      const decodedEmail =req.decoded.email;
-      console.log(decodedEmail,'decoded email');
+    app.get("/booking", verifyJWT, async (req, res) => {
+      const decodedEmail = req.decoded.email;
 
       const patient = req.query.patient;
-      if(patient === decodedEmail){
+      if (patient === decodedEmail) {
         const query = { patient: patient };
         const bookings = await bookingCollection.find(query).toArray();
-       return  res.send(bookings);
+        res.send(bookings);
       } else {
-        return res.status(403).send({messages: 'Forbidden access'})
+        return res.status(403).send({ messages: "Forbidden access" });
       }
- 
     });
 
     app.post("/booking", async (req, res) => {
@@ -139,7 +142,7 @@ async function run() {
       const result = await bookingCollection.insertOne(booking);
       return res.send({ success: true, result });
     });
-  } finally {
+  } finally { 
   }
 }
 
