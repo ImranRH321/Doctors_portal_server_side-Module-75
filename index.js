@@ -49,14 +49,27 @@ async function run() {
 
     //   _________User_Collection_________
 
-    app.get("/user", async (req, res) => {
+    app.get("/user", verifyJWT,  async (req, res) => {
       const users = await userCollection.find({}).toArray();
-      console.log('users', users);
       res.send(users);
     });
 
 
+ //  ______________Make_Admin_Role_____________
+    app.put("/user/admin/:email", verifyJWT,  async (req, res) => {
+      const email = req.params.email;
+      console.log('email' , email);
+      const filter = { email: email };
+      const updateDoc = {
+        $set: {role: 'admin'},
+      };
+      const result = await userCollection.updateOne(filter, updateDoc);
+      console.log('result', result);
+      res.send(result);
+    });
 
+
+    // __________login_Signup_Google_user__token_for__database________
     app.put("/user/:email", async (req, res) => {
       const email = req.params.email;
       const user = req.body;
