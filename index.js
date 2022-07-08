@@ -2,8 +2,8 @@ const express = require("express");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
-const { MongoClient, ServerApiVersion } = require("mongodb");
-const { json } = require("express");
+const { MongoClient, ServerApiVersion, Admin } = require("mongodb");
+const { json, Router } = require("express");
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -26,7 +26,7 @@ const verifyJWT = (req, res, next) => {
   const token = authHeader.split(" ")[1];
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function (err, decoded) {
     if (err) {
-     return res.status(403).send({ messages: "Forbidden access" });
+      return res.status(403).send({ messages: "Forbidden access" });
     }
     req.decoded = decoded;
     next();
@@ -40,34 +40,53 @@ async function run() {
     const bookingCollection = client.db("doctor_portal").collection("booking");
     const userCollection = client.db("doctor_portal").collection("users");
 
-     //   _________Services_Collection_________
+    //   _________Services_Collection_________
     app.get("/service", async (req, res) => {
       const services = await serviceCollection.find().toArray();
       res.send(services);
     });
-    
 
     //   _________User_Collection_________
 
-    app.get("/user", verifyJWT,  async (req, res) => {
+    app.get("/user", verifyJWT, async (req, res) => {
       const users = await userCollection.find({}).toArray();
       res.send(users);
     });
 
 
- //  ______________Make_Admin_Role_____________
-    app.put("/user/admin/:email", verifyJWT,  async (req, res) => {
-      const email = req.params.email;
-      console.log('email' , email);
-      const filter = { email: email };
-      const updateDoc = {
-        $set: {role: 'admin'},
-      };
-      const result = await userCollection.updateOne(filter, updateDoc);
-      console.log('result', result);
-      res.send(result);
-    });
+    // ____----------______-----------___________---------_______-----
 
+   app.get('/admin/:email',verifyJWT, async (req, res) => {
+    const email = req.params.email;
+    console.log('email', email);
+    const user = await userCollection.findOne({email:email})
+    console.log('user');
+    const isAdmin = user.role === 'admin';
+    console.log(isAdmin);
+    res.send({admin: isAdmin})
+
+   })
+
+
+    //  ______________Make_Admin_Role_____________
+    app.put('/user/admin/:email', verifyJWT, async (req, res) => {
+      const email = req.params.email;
+      const requester = req.decoded.email;
+      const requesterAccount = await userCollection.findOne({email: requester})
+       if(requesterAccount.role === 'admin'){
+        const filter = {email: email}
+  
+        const updateDoc = {
+         $set: {role: 'admin'} 
+        }
+        console.log('role', updateDoc);
+        const result = await userCollection.updateOne(filter, updateDoc)
+        res.send(result)
+       }  else{
+        res.status(403).send('Forbidden')
+       }
+     
+    })
 
     // __________login_Signup_Google_user__token_for__database________
     app.put("/user/:email", async (req, res) => {
@@ -155,7 +174,7 @@ async function run() {
       const result = await bookingCollection.insertOne(booking);
       return res.send({ success: true, result });
     });
-  } finally { 
+  } finally {
   }
 }
 
